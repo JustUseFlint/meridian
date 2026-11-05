@@ -3,12 +3,13 @@ const KEY='meridian.v1', MIN=24, MAX=40, THRESH=.5;
 const DK=Object.keys(DIMS), POL=['econ','auth','trad','glob'], B5=['O','C','E','A','N'], MOR=['care','equa','prop','loya','autr','puri'];
 let st=JSON.parse(localStorage.getItem(KEY)||'null')||{hist:[]};
 const save=()=>localStorage.setItem(KEY,JSON.stringify(st));
-const byId=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+const byId=Object.fromEntries([...ITEMS,...QUIZZES.flatMap(q=>q.items)].map(i=>[i.id,i]));
+const allAns=()=>st.hist.concat(st.extra||[]);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function hash(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0}
 
 // ---------- scoring ----------
-function score(hist=st.hist){
+function score(hist=allAns()){
  const sum={},wt={};DK.forEach(d=>{sum[d]=0;wt[d]=.6});
  for(const h of hist){const it=byId[h.id];
   if(it.t==='S'){for(const[d,w]of Object.entries(it.o[h.a].w)){sum[d]+=Math.sign(w)*Math.min(1,Math.abs(w)+.25)*Math.abs(w);wt[d]+=Math.abs(w)}}
@@ -38,7 +39,7 @@ function matchTypes(s){
 
 // ---------- router ----------
 function go(r){location.hash=r}
-window.addEventListener('hashchange',render);
+window.addEventListener('hashchange',()=>render());
 function render(){
  const r=location.hash.slice(1)||(st.done?'results':'intro');
  document.body.className='r-'+r.split('/')[0];window.scrollTo(0,0);
@@ -203,4 +204,3 @@ function shareCard(){const{s}=score(),t=matchTypes(s)[0].t;
    sheet.hidden=false;requestAnimationFrame(()=>sheet.classList.add('open'));const ns=$('#nshare');if(ns)ns.onclick=()=>navigator.share({files:[f],title:'My Meridian type'}).catch(()=>{});});};
  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);}
 
-render();
