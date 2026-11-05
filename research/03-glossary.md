@@ -1,0 +1,23 @@
+# Glossary (as shown in app)
+
+- **Big Five (OCEAN)** — The most replicated model of personality: Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism. Traits are continuous, not types.
+- **HEXACO** — A six-factor model that adds Honesty-Humility to the Big Five (Ashton & Lee, 2007).
+- **IPIP** — International Personality Item Pool — public-domain personality items used in research (Goldberg et al., 2006).
+- **Moral Foundations Theory** — The idea that moral intuitions draw on several foundations. MFQ-2 measures six: Care, Equality, Proportionality, Loyalty, Authority, Purity (Atari et al., 2023).
+- **Equality vs. Proportionality** — Two kinds of fairness: everyone gets the same, versus rewards match contribution. MFQ-2 split the older "Fairness" foundation into these.
+- **Purity / Sanctity** — Intuitions that some things are sacred or degrading regardless of harm.
+- **Schwartz values** — A circle of ten basic human values (e.g. security, self-direction, universalism, achievement) where neighbouring values are compatible and opposite ones conflict.
+- **Right-Wing Authoritarianism (RWA)** — A disposition toward submission to established authority, conventionalism and aggression toward deviants (Altemeyer, 1981). Not the same as being economically right-wing.
+- **Social Dominance Orientation (SDO)** — Preference for group-based hierarchy and inequality (Pratto et al., 1994).
+- **Libertarianism** — Prioritising individual liberty and voluntary exchange; on the left (libertarian socialism) or right (classical liberal, free-market).
+- **Communitarianism** — The view that community, shared values and mutual obligations shape the self and should shape policy.
+- **Populism** — Politics framing society as "the people" against a self-serving "elite". Exists on left and right.
+- **Technocracy** — Governing by experts and evidence rather than ideology or popular sentiment.
+- **Globalism / Cosmopolitanism** — Favouring international cooperation, open trade and shared institutions over national sovereignty.
+- **Nationalism** — Prioritising the nation’s sovereignty, identity and interests.
+- **Burkean conservatism** — Edmund Burke’s idea that inherited institutions carry accumulated wisdom and should be reformed gradually.
+- **Social democracy** — Market economy combined with a strong welfare state and labour protections.
+- **Acquiescence bias** — The tendency to agree with statements regardless of content — reduced here by balanced keying.
+- **Forced-choice item** — A question where both options are desirable, so you reveal priorities rather than agreeing with everything.
+- **Adaptive testing** — Choosing each next question based on what is still uncertain about you, as in computerized adaptive testing.
+- **Barnum effect** — Accepting vague, flattering descriptions as uniquely true of oneself — a common flaw in personality test results.
