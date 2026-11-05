@@ -1,7 +1,52 @@
-// Meridian v2 — painted art, deep tabs, relationships, careers, rarity, dashboard, research
-// ---------- art overrides ----------
-function mascotSVG(t,size=200){return `<img class="masc" src="img/m-${t.id}.webp" alt="${t.animal} mascot for ${t.name}" style="height:${size}px" loading="lazy" decoding="async">`}
-function islandSVG(t){return `<img class="isl" src="img/i-${t.id}.webp" alt="${esc(t.isl.name)}, the island of ${t.name}" decoding="async">`}
+// Meridian v3 — shared model + content panels (carried from v2)
+const DK=Object.keys(DIMS), POL=['econ','auth','trad','glob'], B5=['O','C','E','A','N'], MOR=['care','equa','prop','loya','autr','puri'];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hash(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0}
+
+// ---------- scoring ----------
+function score(hist=allAns()){
+ const sum={},wt={};DK.forEach(d=>{sum[d]=0;wt[d]=.6});
+ for(const h of hist){const it=byId[h.id];
+  if(it.t==='S'){for(const[d,w]of Object.entries(it.o[h.a].w)){sum[d]+=Math.sign(w)*Math.min(1,Math.abs(w)+.25)*Math.abs(w);wt[d]+=Math.abs(w)}}
+  else for(const[d,w]of Object.entries(it.w)){sum[d]+=(h.a/2)*Math.sign(w)*Math.abs(w);wt[d]+=Math.abs(w)}}
+ const s={},u={};DK.forEach(d=>{s[d]=Math.max(-1,Math.min(1,sum[d]/wt[d]*1.35));u[d]=1/Math.sqrt(1+2.2*(wt[d]-.6))});
+ return{s,u};
+}
+function matchTypes(s){
+ return TYPES.map(t=>{let d=0;POL.forEach((k,i)=>d+=1.3*(s[k]-t.c[i])**2);B5.forEach((k,i)=>d+=.8*(s[k]-t.c[4+i])**2);MOR.forEach((k,i)=>d+=.6*(s[k]-(t.m[i]*2-1))**2);return{t,d}})
+  .sort((a,b)=>a.d-b.d).map(r=>({...r,fit:Math.round(100*Math.exp(-r.d/6))}));
+}
+
+const pctl=v=>Math.round((v+1)*50);
+function barRow(d,s,u){const D=DIMS[d],v=s[d];return `<div class="drow"><div class="dlab"><span>${D.lo}</span><b>${D.name}</b><span>${D.hi}</span></div>
+ <div class="dtrack"><i class="mid"></i><i class="fill" style="${v<0?`right:50%;width:${-v*50}%`:`left:50%;width:${v*50}%`}"></i><i class="knob" style="left:${pctl(v)}%"></i></div>
+ <div class="dconf">${conf(u[d])}</div></div>`}
+const conf=x=>{const c=Math.round((1-x)*100);return `<span class="cm"><i style="width:${c}%"></i></span>${c<55?'Low':c<68?'Fair':'Good'} confidence`};
+function word(v,lo,hi){const a=Math.abs(v);return a<.15?'balanced':(a<.45?'leaning ':'strongly ')+(v<0?lo.toLowerCase():hi.toLowerCase())}
+const panels={};
+function traitNote(s,good){const d=B5.slice().sort((a,b)=>Math.abs(s[b])-Math.abs(s[a]))[0],v=s[d];
+ const g={O:['Generates fresh ideas','Values the familiar'],C:['Follows through','Adapts on the fly'],E:['Energises groups','Listens deeply'],A:['Cooperative','Holds firm under pressure'],N:['Emotionally attuned','Unflappable']},
+ b={O:['Can chase novelty','May resist new evidence'],C:['Perfectionism','Loose ends'],E:['Talks over others','Hard to read'],A:['People-pleasing','Bluntness costs allies'],N:['Worry spirals','Can miss real risks']};
+ return `<li class="trait">${(good?g:b)[d][v>=0?0:1]} <small>from your ${DIMS[d].name}</small></li>`}
+function plot(s){const x=150+s.econ*120,y=150-(-s.auth)*-120;return `<svg viewBox="0 0 300 300" class="plot"><rect x="30" y="30" width="120" height="120" fill="#F6D9D2"/><rect x="150" y="30" width="120" height="120" fill="#DCE6F1"/><rect x="30" y="150" width="120" height="120" fill="#DDEEDD"/><rect x="150" y="150" width="120" height="120" fill="#F4EAC9"/>
+ <path d="M150 30V270M30 150H270" stroke="#2A2420" stroke-width="1.5"/><text x="150" y="22" text-anchor="middle">Order</text><text x="150" y="292" text-anchor="middle">Liberty</text><text x="26" y="154" text-anchor="end" transform="rotate(-90 22 150)" >Equality</text><text x="278" y="154" transform="rotate(90 278 150)" text-anchor="middle">Markets</text>
+ ${TYPES.map(t=>`<circle cx="${150+t.c[0]*120}" cy="${150-t.c[1]*120}" r="4" fill="${t.col}" opacity=".5"><title>${t.name}</title></circle>`).join('')}
+ <circle cx="${x}" cy="${150-s.auth*120}" r="11" fill="#2A2420"/><circle cx="${x}" cy="${150-s.auth*120}" r="5" fill="#F3B13C"/></svg>`}
+function radar(s){const c=150,R=105,pts=MOR.map((d,i)=>{const a=-Math.PI/2+i*Math.PI/3,r=R*(s[d]+1)/2;return[c+Math.cos(a)*r,c+Math.sin(a)*r,a]});
+ return `<svg viewBox="0 0 300 300" class="plot">${[.33,.66,1].map(k=>`<polygon points="${MOR.map((_,i)=>{const a=-Math.PI/2+i*Math.PI/3;return(c+Math.cos(a)*R*k)+','+(c+Math.sin(a)*R*k)}).join(' ')}" fill="none" stroke="#D8CFBF"/>`).join('')}
+ <polygon points="${pts.map(p=>p[0]+','+p[1]).join(' ')}" fill="var(--tc)" fill-opacity=".35" stroke="var(--tc)" stroke-width="2.5"/>
+ ${MOR.map((d,i)=>{const a=-Math.PI/2+i*Math.PI/3;return `<text x="${c+Math.cos(a)*(R+24)}" y="${c+Math.sin(a)*(R+24)+4}" text-anchor="middle">${DIMS[d].name}</text>`}).join('')}</svg>`}
+
+// ---------- archipelago ----------
+function openType(id){const t=TYPES.find(x=>x.id===id);
+ sheet.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet-card" style="--tb:${t.bg};--tc:${t.col}" role="dialog" aria-label="${t.name}">
+ <button class="x" onclick="closeSheet()" aria-label="Close">×</button>
+ <div class="sh-top">${mascotSVG(t,120)}<div><p class="eyebrow">No. ${String(t.n).padStart(2,'0')} · ${t.animal}</p><h2>${t.name}</h2><p class="tag">“${t.tag}”</p></div></div>
+ <p>${t.sum}</p><div class="sh-isl">${islandSVG(t)}<b>${t.isl.name}</b></div>
+ <div class="grid2 tight"><div><h4>Strengths</h4><ul>${t.str.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h4>Watch-outs</h4><ul>${t.wk.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+ <h4>Shares tendencies with</h4><p class="muted">${t.fam.map(f=>f[0]).join(' · ')} <br><small>Approximate, from public record.</small></p></div>`;
+ sheet.hidden=false;requestAnimationFrame(()=>sheet.classList.add('open'));}
+function closeSheet(){sheet.classList.remove('open');setTimeout(()=>sheet.hidden=true,250)}
 const tById=id=>TYPES.find(t=>t.id===id);
 const vecOf=t=>{const v={};POL.forEach((k,i)=>v[k]=t.c[i]);B5.forEach((k,i)=>v[k]=t.c[4+i]);MOR.forEach((k,i)=>v[k]=t.m[i]*2-1);return v};
 const pad2=n=>String(n).padStart(2,'0');
@@ -51,52 +96,10 @@ const DIFF_TIP={
  loya:['loyalty','Clarify what loyalty requires — and what it doesn\u2019t.'],autr:['respect for authority','Decide whose expertise you defer to, and when.'],puri:['the sacred','Ask what is non-negotiable for each of you.']};
 function pairTips(a,b){return DK.map(k=>[k,Math.abs(a[k]-b[k])]).sort((x,y)=>y[1]-x[1]).slice(0,3).map(([k,g])=>({k,g,area:DIFF_TIP[k][0],tip:DIFF_TIP[k][1],same:g<.35}))}
 function sharedStrength(a,b){return DK.map(k=>[k,Math.abs(a[k]-b[k]),Math.abs(a[k]+b[k])]).filter(x=>x[2]>.6).sort((x,y)=>x[1]-y[1]).slice(0,2).map(x=>DIMS[x[0]].name)}
-
-// ---------- router ----------
-function render(){
- const raw=location.hash.slice(1),r=raw||(st.done?'dash/home':'intro'),[k,arg]=r.split('/');
- document.body.className='r-'+k;window.scrollTo(0,0);
- ({intro,quiz,results,map,method,research,dash,take,session,changed}[k]||intro)(arg);
-}
-function topbar(title,back){return `<header class="topbar"><button class="ghost dk" onclick="${back||"history.length>1?history.back():go('intro')"}">← Back</button><span class="brand dk"><i></i>${title}</span><span class="tb-spacer"></span></header>`}
-const nav=(on)=>`<nav class="dnav" aria-label="Dashboard">${[['home','Home'],['history','History'],['quizzes','Questionnaires'],['research','Research'],['profile','Profile']].map(([k,l])=>`<button class="${on===k?'on':''}" onclick="go('${k==='research'?'research':'dash/'+k}')">${l}</button>`).join('')}</nav>`;
-
-// ---------- intro patch: research + dashboard entry ----------
-const _intro=intro;
-intro=function(){_intro();const tb=document.querySelector('.intro .topbar');
- tb.innerHTML=`<span class="brand"><i></i>Meridian</span><span class="tb-r"><button class="ghost" onclick="go('research')">Research</button><button class="ghost" onclick="go('map')">Archipelago</button></span>`;
- if(st.done){const cta=document.querySelector('.intro .cta-row');cta.innerHTML=`<button class="btn amber" onclick="go('dash/home')">Open my dashboard</button><button class="btn glass" onclick="go('results')">View my profile</button>`}};
-
-// ---------- core quiz completion → record session ----------
-const _quiz=quiz;
-quiz=function(){if(!pendingPoll&&!nextItem()&&!st.done){st.done=true;st.extra=st.extra||[];st.sessions=st.sessions||[];
-  const {s}=score();st.sessions.push({kind:'core',qid:'core',title:'Core assessment',date:Date.now(),answers:st.hist.slice(),type:matchTypes(s)[0].t.id,after:s});save();return go('results')}
- return _quiz()};
-startQuiz=function(){if(st.done){if(!confirm('Retake the core assessment? This clears your profile, history and themed results.'))return;st={hist:[]};save()}go('quiz')};
-
-// ---------- results ----------
-const TABS=[['overview','Overview'],['compass','Compass'],['traits','Traits'],['morals','Morals'],['relationships','Relationships'],['careers','Careers'],['matches','Famous matches'],['glossary','Glossary']];
-results=function(){
- if(!st.hist.length)return go('intro');
- const{s,u}=score();const ranked=matchTypes(s);const top=ranked[0],t=top.t,alt=ranked[1],R=RARITY[t.id];
- app.innerHTML=`<section class="results" style="--tc:${t.col};--tb:${t.bg}">
- <header class="topbar"><span class="brand dk"><i></i>Meridian</span><div class="tb-r"><button class="ghost dk" onclick="go('dash/home')">Dashboard</button><button class="ghost dk hide-s" onclick="go('map')">Archipelago</button><button class="ghost dk" onclick="shareCard()">Share</button></div></header>
- <div class="hero">
-  <div class="hero-num" aria-hidden="true">${pad2(t.n)}</div>
-  <div class="hero-copy"><p class="eyebrow">Your type · ${top.fit}% fit</p><h1>${t.name}</h1><p class="tag">“${t.tag}”</p>
-   <div class="hero-stats"><div><b>${t.animal}</b><span>Mascot</span></div><div><b>${R.share.toFixed(1)}%</b><span>Est. share of people</span></div><div><b>${allAns().length}</b><span>Answers</span></div></div></div>
-  <div class="hero-mascot">${mascotSVG(t,320)}</div>
- </div>
- <nav class="tabs" role="tablist">${TABS.map(([k,l])=>`<button role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" onclick="tab='${k}';results()">${l}</button>`).join('')}</nav>
- <div class="panel">${panels[tab](s,u,t,alt,ranked)}</div>
- <footer class="foot"><button class="btn dark" onclick="go('dash/home')">Go to my dashboard →</button><button class="btn line" onclick="shareCard()">Get share card</button></footer>
- </section>`;
- const tb=document.querySelector('.tabs .on');tb&&tb.scrollIntoView({inline:'center',block:'nearest'});
-};
 const sec=(title,body,cls='')=>`<div class="card ${cls}"><h3>${title}</h3>${body}</div>`;
 const lead=(t)=>`<p class="lead">${t}</p>`;
 
-panels.overview=function(s,u,t,alt){const E=EXT[t.id],R=RARITY[t.id];
+panels.overview0=function(s,u,t,alt){const E=EXT[t.id],R=RARITY[t.id];
  const top2=B5.slice().sort((a,b)=>Math.abs(s[b])-Math.abs(s[a])).slice(0,2);
  return `<div class="stack">
  <div class="grid2">
@@ -188,59 +191,6 @@ panels.glossary=function(){const all=[...GLOSSARY,...GLOSS2];return `<div class=
 function filterGloss(q){q=q.toLowerCase();document.querySelectorAll('#gl>div').forEach(d=>d.hidden=q&&!d.textContent.toLowerCase().includes(q))}
 
 // ---------- type sheet: add rarity ----------
-const _openType=openType;openType=function(id){_openType(id);const R=RARITY[id],t=tById(id);const tag=sheet.querySelector('.sh-top .tag');tag&&tag.insertAdjacentHTML('afterend',`<p class="rare-chip">${R.share.toFixed(1)}% est. · ${rareTxt(R)}</p>`);
- sheet.querySelector('.sh-isl').insertAdjacentHTML('afterend',`<div class="grid2 tight"><div><h4>Communicates</h4><p class="sm">${EXT[id].comm}</p></div><div><h4>Under stress</h4><p class="sm">${EXT[id].stress}</p></div></div>`)};
-
-// ---------- dashboard ----------
-function confPct(){const{u}=score();return Math.round(100*DK.reduce((a,d)=>a+(1-u[d]),0)/DK.length)}
-function dash(tabk='home'){
- if(!st.done)return go('intro');st.sessions=st.sessions||[];st.extra=st.extra||[];
- const{s,u}=score(),t=matchTypes(s)[0].t,done=new Set(st.sessions.map(x=>x.qid));
- let body='';
- if(tabk==='home'){const lowest=DK.slice().sort((a,b)=>u[b]-u[a]).slice(0,3);const sugg=QUIZZES.filter(q=>!done.has(q.id)).map(q=>({q,v:q.items.reduce((a,it)=>a+Object.keys(it.w||it.o.reduce((m,o)=>Object.assign(m,o.w),{})).filter(k=>lowest.includes(k)).length,0)})).sort((a,b)=>b.v-a.v)[0];
-  body=`<div class="dh-hero" style="--tb:${t.bg};--tc:${t.col}"><div><p class="eyebrow">Your profile</p><h1>${t.name}</h1><p class="tag">“${t.tag}”</p><div class="cta-row"><button class="btn dark" onclick="tab='overview';go('results')">Open full profile</button>${sugg?`<button class="btn line" onclick="go('take/${sugg.q.id}')">Next: ${sugg.q.title}</button>`:''}</div></div>${mascotSVG(t,220)}</div>
-  <div class="kpis"><div class="card kpi"><b>${confPct()}%</b><span>Avg. confidence</span></div><div class="card kpi"><b>${st.sessions.length}</b><span>Questionnaires done</span></div><div class="card kpi"><b>${allAns().length}</b><span>Answers given</span></div><div class="card kpi"><b>${RARITY[t.id].share.toFixed(1)}%</b><span>Est. share of people</span></div></div>
-  <div class="grid2">${sec('Confidence by dimension',DK.map(d=>{const c=Math.round((1-u[d])*100);return `<div class="mrow"><b>${DIMS[d].name}${DIMS[d].grp==='moral'?' <small>(moral)</small>':''}</b><span class="mbar"><i style="width:${c}%;background:${c<55?'#D9A25B':c<68?'#B9A86A':'#6C9A6B'}"></i></span><em>${c}</em></div>`}).join('')+`<p class="muted">Least certain: ${lowest.map(d=>DIMS[d].name).join(', ')}. ${sugg?`<b>${sugg.q.title}</b> targets these best.`:''}</p>`)}
-  ${sec('Snapshot',`<div class="snap">${POL.map(d=>barRow(d,s,u)).join('')}</div><p class="muted"><a href="#results" onclick="tab='compass'">See compass detail →</a></p>`)}</div>`}
- if(tabk==='history'){body=sec('History',st.sessions.length?`<ol class="hist">${st.sessions.map((x,i)=>{const q=x.qid==='core'?{col:'#2A2420',bg:'#EFE6D6'}:QUIZZES.find(q=>q.id===x.qid);return `<li><button onclick="go('session/${i}')" style="--qc:${q.col};--qb:${q.bg}"><span class="h-dot"></span><div><b>${x.title}</b><span>${new Date(x.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})} · ${x.answers.length} answers${x.typeChange?' · type changed':''}</span></div><em>View →</em></button></li>`}).reverse().join('')}</ol>`:'<p>No questionnaires yet.</p>')}
- if(tabk==='quizzes'){body=`<div class="qlib-head"><h2>Questionnaires</h2><p class="muted">Each one asks new questions and refines the same profile. Your type can change.</p></div><div class="qlib">${QUIZZES.map(q=>`<button class="qtile ${done.has(q.id)?'done':''}" style="--qc:${q.col};--qb:${q.bg}" onclick="go('take/${q.id}')"><span class="qt-n">${q.items.length} questions · ~${q.mins} min</span><b>${q.title}</b><span>${q.blurb}</span><em>${done.has(q.id)?'✓ Completed · retake':'Start →'}</em></button>`).join('')}</div>`}
- if(tabk==='profile'){body=`<div class="grid2">${sec('Your data',`<p>Everything is stored only in this browser (localStorage). Nothing is sent to a server.</p><div class="cta-row"><button class="btn dark" onclick="exportJSON()">Export JSON</button><button class="btn line" onclick="importJSON()">Import JSON</button></div>`)}
-  ${sec('Reset',`<p>Clear only themed questionnaires, or everything including the core assessment.</p><div class="cta-row"><button class="btn line" onclick="if(confirm('Remove all themed questionnaire answers?')){st.extra=[];st.sessions=st.sessions.filter(x=>x.qid==='core');save();dash('profile')}">Clear themed results</button><button class="btn warn" onclick="if(confirm('Delete everything and start over?')){localStorage.removeItem(KEY);st={hist:[]};go('intro')}">Delete all data</button></div>`)}
-  ${sec('About Meridian',`<p>An adaptive test of personality, morals and politics. Read how it works and its limits on the <a href="#research">Research</a> page.</p>`)}</div>`}
- app.innerHTML=`<section class="dash" style="--tc:${t.col};--tb:${t.bg}"><header class="topbar"><span class="brand dk"><i></i>Meridian</span><div class="tb-r"><button class="ghost dk" onclick="tab='overview';go('results')">My profile</button></div></header>${nav(tabk)}<div class="dwrap">${body}</div></section>`;
-}
-function exportJSON(){const b=new Blob([JSON.stringify({app:'meridian',version:2,exported:new Date().toISOString(),state:st,scores:score().s},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='meridian-profile.json';a.click()}
-function importJSON(){const i=document.createElement('input');i.type='file';i.accept='application/json';i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.state||!Array.isArray(d.state.hist))throw 0;st=d.state;save();go('dash/home')}catch(e){alert('That file isn\u2019t a Meridian export.')}};i.click()}
-
-// ---------- themed questionnaire ----------
-let tq=null;
-function take(qid){const Q=QUIZZES.find(q=>q.id===qid);if(!Q||!st.done)return go('dash/quizzes');
- if(!tq||tq.qid!==qid)tq={qid,ans:[],before:score().s,beforeType:matchTypes(score().s)[0].t.id};
- const i=tq.ans.length,it=Q.items[i];if(!it)return finishTake(Q);
- let bodyH='';
- if(it.t==='L')bodyH=`<div class="likert">${[['Strongly disagree',-2],['Disagree',-1],['Unsure',0],['Agree',1],['Strongly agree',2]].map(([l,v],k)=>`<button class="lk lk${k}" onclick="tAns(${v})"><span class="dot"></span>${l}</button>`).join('')}</div>`;
- if(it.t==='P')bodyH=`<div class="pair"><button class="tile t-a" onclick="tAns(-2)"><span class="tl">A</span>${esc(it.a)}</button><button class="tile t-b" onclick="tAns(2)"><span class="tl">B</span>${esc(it.b)}</button></div><div class="lean"><button onclick="tAns(-1)">Lean A</button><button onclick="tAns(0)">Truly torn</button><button onclick="tAns(1)">Lean B</button></div>`;
- if(it.t==='S')bodyH=`<div class="scene">${it.o.map((o,k)=>`<button class="tile p${k}" onclick="tAns(${k})"><span class="tl">${'ABCD'[k]}</span>${esc(o.t)}</button>`).join('')}</div>`;
- app.innerHTML=`<section class="quiz" style="--qc:${Q.col}"><header class="topbar"><button class="ghost dk" onclick="tBack()" ${i===0?'disabled':''}>← Back</button><span class="brand dk"><i></i>${Q.title}</span><button class="ghost dk" onclick="tq=null;go('dash/quizzes')">Exit</button></header>
- <div class="qwrap"><div class="prog"><div class="bar"><i style="width:${Math.round(i/Q.items.length*100)}%;background:${Q.col}"></i></div><div class="prog-meta"><span>Question ${i+1} <em>of ${Q.items.length}</em></span><span>${Q.title}</span></div></div>
- <article class="qcard"><div class="qhead"><span class="chip">${{L:'Statement',P:'Trade-off',S:'Scenario'}[it.t]}</span></div><h2>${esc(it.q)}</h2>${bodyH}</article><p class="hint">Answers here are added to your profile. Your type can change.</p></div></section>`}
-function tAns(a){const Q=QUIZZES.find(q=>q.id===tq.qid);tq.ans.push({id:Q.items[tq.ans.length].id,a});take(tq.qid)}
-function tBack(){tq.ans.pop();take(tq.qid)}
-function finishTake(Q){st.extra=(st.extra||[]).filter(h=>!Q.items.some(it=>it.id===h.id)).concat(tq.ans);
- const after=score().s,ty=matchTypes(after)[0].t.id;
- st.sessions.push({kind:'theme',qid:Q.id,title:Q.title,date:Date.now(),answers:tq.ans,before:tq.before,after,beforeType:tq.beforeType,type:ty,typeChange:ty!==tq.beforeType});save();
- const idx=st.sessions.length-1;tq=null;go('changed/'+idx)}
-function changed(i){const x=st.sessions[+i];if(!x||!x.before)return go('dash/history');
- const deltas=DK.map(d=>({d,v:x.after[d]-x.before[d]})).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));const t=tById(x.type),bt=tById(x.beforeType);
- app.innerHTML=`<section class="dash" style="--tc:${t.col};--tb:${t.bg}">${topbar('What changed',"go('dash/home')")}<div class="dwrap">
- <div class="dh-hero"><div><p class="eyebrow">${x.title} · complete</p><h1>${x.typeChange?'Your type shifted':'Your type held'}</h1><p class="tag">${x.typeChange?`${bt.name} → <b>${t.name}</b>`:`Still ${t.name}, with a sharper profile.`}</p><div class="cta-row"><button class="btn dark" onclick="go('dash/quizzes')">More quizzes</button><button class="btn line" onclick="go('session/${i}')">Review answers</button></div></div>${mascotSVG(t,200)}</div>
- ${sec('Biggest movements',deltas.slice(0,6).map(({d,v})=>`<div class="delta"><b>${DIMS[d].name}</b><span class="dbar"><i class="mid"></i><i class="dv ${v<0?'neg':''}" style="${v<0?`right:50%;width:${Math.min(50,-v*100)}%`:`left:50%;width:${Math.min(50,v*100)}%`}"></i></span><em>${v>=0?'+':''}${Math.round(v*50)}</em></div>`).join('')+`<p class="muted">Points on a 0–100 scale. Small moves mean earlier answers already pinned that dimension down.</p>`)}
- </div></section>`}
-const ansLabel=(it,a)=>it.t==='L'?['Strongly disagree','Disagree','Unsure','Agree','Strongly agree'][a+2]:it.t==='P'?(a===-2?'A: '+it.a:a===2?'B: '+it.b:a===0?'Truly torn':a<0?'Lean A ('+it.a+')':'Lean B ('+it.b+')'):it.o[a].t;
-function session(i){const x=(st.sessions||[])[+i];if(!x)return go('dash/history');
- app.innerHTML=`<section class="dash">${topbar(x.title,"go('dash/history')")}<div class="dwrap">${sec(x.title,`<p class="muted">${new Date(x.date).toLocaleString()} · ${x.answers.length} answers${x.type?' · result: '+tById(x.type).name:''}</p><ol class="answers">${x.answers.map(h=>{const it=byId[h.id];return it?`<li><p>${esc(it.q)}</p><b>${esc(ansLabel(it,h.a))}</b></li>`:''}).join('')}</ol>${x.before?`<button class="btn line sm" onclick="go('changed/${i}')">See what changed</button>`:''}`)}</div></section>`}
-
-// ---------- research ----------
 function lifespanChart(){const W=640,H=260,P=40,ages=[10,20,30,40,50,60,70,80];
  // Illustrative curves: direction from Roberts, Walton & Viechtbauer (2006) and Soto et al. (2011). Magnitudes are NOT real data.
  const L={C:[-.5,-.3,0,.15,.28,.36,.4,.4],A:[-.2,-.2,-.05,.08,.18,.28,.35,.38],N:[.3,.25,.1,0,-.1,-.18,-.22,-.2],O:[0,.22,.18,.12,.06,0,-.08,-.18],E:[.15,.1,.05,.02,0,-.03,-.06,-.1]};
@@ -272,23 +222,3 @@ function research(){
   <h4 class="mt">Model-estimated type shares <span class="badge">Model estimate</span></h4>${rarityChart()}</div>
  <div class="card" id="refs"><h3>References</h3><ol class="refs">${REFS.map(r=>`<li>${r}</li>`).join('')}</ol></div>
  </div></section>`}
-method=research;
-
-// ---------- share card: draw mascot onto canvas ----------
-shareCard=function(){const{s}=score(),t=matchTypes(s)[0].t;
- const bars=POL.map((d,i)=>`<text x="80" y="${1010+i*62}" font-size="26" fill="#6B6158" font-family="Helvetica,Arial">${DIMS[d].name}</text><rect x="330" y="${990+i*62}" width="670" height="14" rx="7" fill="#E7DDCB"/><circle cx="${330+pctl(s[d])/100*670}" cy="${997+i*62}" r="16" fill="${t.col}" stroke="#2A2420" stroke-width="4"/>`).join('');
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="#F7F1E6"/><rect x="40" y="40" width="1000" height="860" rx="48" fill="${t.bg}"/>
- <text x="1000" y="380" text-anchor="end" font-size="360" font-weight="900" fill="${t.col}" opacity=".18" font-family="Impact,Helvetica">${pad2(t.n)}</text>
- <text x="90" y="130" font-size="30" letter-spacing="6" fill="#6B6158" font-family="Helvetica,Arial">MERIDIAN · MY TYPE</text>
- <text x="90" y="230" font-size="92" font-weight="700" fill="#2A2420" font-family="Georgia,serif">${t.name}</text>
- <text x="90" y="290" font-size="34" font-style="italic" fill="#4A423B" font-family="Georgia,serif">${t.tag.replace(/&/g,'&amp;')}</text>${bars}
- <text x="80" y="1300" font-size="26" fill="#6B6158" font-family="Helvetica,Arial">Home: ${t.isl.name.replace(/&/g,'&amp;')} · ${RARITY[t.id].share.toFixed(1)}% est. · justuseflint.github.io/meridian</text></svg>`;
- const img=new Image(),m=new Image();let n=0;const go2=()=>{if(++n<2)return;const c=document.createElement('canvas');c.width=1080;c.height=1350;const g=c.getContext('2d');g.drawImage(img,0,0);const h=560,w=m.width*h/m.height;g.drawImage(m,540-w/2+120,330,w,h);
-  c.toBlob(b=>{const f=new File([b],'meridian-'+t.id+'.png',{type:'image/png'});const url=URL.createObjectURL(b);
-   sheet.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet-card share" role="dialog"><button class="x" onclick="closeSheet()">×</button><h2>Your share card</h2><img src="${url}" alt="Share card"><div class="cta-row"><a class="btn dark" download="${f.name}" href="${url}">Download PNG</a>${navigator.canShare&&navigator.canShare({files:[f]})?`<button class="btn amber" id="nshare">Share…</button>`:''}</div></div>`;
-   sheet.hidden=false;requestAnimationFrame(()=>sheet.classList.add('open'));const ns=$('#nshare');if(ns)ns.onclick=()=>navigator.share({files:[f],title:'My Meridian type'}).catch(()=>{});})};
- img.onload=go2;m.onload=go2;m.src='img/m-'+t.id+'.webp';img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)};
-
-// migrate v1 saves: done but no sessions
-if(st.done&&!st.sessions){st.sessions=[{kind:'core',qid:'core',title:'Core assessment',date:Date.now(),answers:st.hist.slice(),type:matchTypes(score().s)[0].t.id}];st.extra=[];save()}
-render();
