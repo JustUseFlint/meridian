@@ -16,13 +16,13 @@ st.done=true; // research view compatibility
 function hash(s){let h=2166136261;for(const c of String(s))h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0}
 // ---------- scoring ----------
 const RANKV=[1,.4,-.4,-1];
-function score(hist=allAns()){
+function score(hist=allAns(),raw=false){
  const sum={},wt={};DK.forEach(d=>{sum[d]=0;wt[d]=.6});
  for(const h of hist){const it=byId[h.id];if(!it)continue;
-  if(it.t==='S'){for(const[d,w]of Object.entries(it.o[h.a].w)){sum[d]+=Math.sign(w)*Math.min(1,Math.abs(w)+.25)*Math.abs(w);wt[d]+=Math.abs(w)}}
-  else if(it.t==='K'){h.a.forEach((oi,r)=>{for(const[d,w]of Object.entries(it.o[oi].w)){sum[d]+=RANKV[r]*w*.8;wt[d]+=Math.abs(w)*.45}})}
-  else{const x=it.t==='R'?h.a:h.a/2;for(const[d,w]of Object.entries(it.w)){sum[d]+=x*w;wt[d]+=Math.abs(w)}}}
- const s={},u={};DK.forEach(d=>{s[d]=Math.max(-1,Math.min(1,sum[d]/wt[d]*1.35));u[d]=1/Math.sqrt(1+2.2*(wt[d]-.6))});
+  if(it.t==='S'){const opt=it.o[h.a];if(!opt||!opt.w)continue;for(const[d,w]of Object.entries(opt.w)){sum[d]+=Math.sign(w)*Math.min(1,Math.abs(w)+.25)*Math.abs(w);wt[d]+=Math.abs(w)}}
+  else if(it.t==='K'){(Array.isArray(h.a)?h.a:[]).forEach((oi,r)=>{const opt=it.o[oi];if(!opt||!opt.w)return;for(const[d,w]of Object.entries(opt.w)){sum[d]+=RANKV[r]*w*.8;wt[d]+=Math.abs(w)*.45}})}
+  else{const x=it.t==='R'?h.a:h.a/2;if(!it.w)continue;for(const[d,w]of Object.entries(it.w)){sum[d]+=x*w;wt[d]+=Math.abs(w)}}}
+ const s={},u={};DK.forEach(d=>{const r=sum[d]/wt[d]*1.35;s[d]=raw?r:Math.max(-1,Math.min(1,r));u[d]=1/Math.sqrt(1+2.2*(wt[d]-.6))});
  return{s,u};
 }
 const confOf=u=>Math.round(100*DK.reduce((a,d)=>a+(1-u[d]),0)/DK.length);
@@ -53,7 +53,7 @@ const SHARDS=[
  {k:'morals',name:'Moral foundations',feat:'Six-foundation radar and what drives your judgments',need:'A Moral Dilemmas or Meaning session, or 4 sessions',ok:c=>c.th.has('morals')||c.th.has('faith')||c.n>=4},
  {k:'values',name:'Values circle',feat:'Ten Schwartz values derived from your profile',need:'Reach 55% overall confidence',ok:c=>c.conf>=55},
  {k:'relationships',name:'Relationships',feat:'Fit with all 16 types at work, in love, friendship and conflict',need:'A Love or Social session, and 50% confidence',ok:c=>(c.th.has('romance')||c.th.has('social'))&&c.conf>=50},
- {k:'careers',name:'Careers & income',feat:'Best and worst career fits, environment and income estimates',need:'A Work & Ambition session',ok:c=>c.th.has('career')},
+ {k:'careers',name:'Careers',feat:'Best and worst career fits and the environments that suit you',need:'A Work & Ambition session',ok:c=>c.th.has('career')},
  {k:'growth',name:'Growth tools',feat:'Blind spots, stress profile and a weekly practice tracker',need:'A Stress or Curiosity session',ok:c=>c.th.has('stress')||c.th.has('mind')},
  {k:'confirm',name:'Type confirmed',feat:'Your gem, your type and how rare it is',need:`Reach ${CONFIRM*100}% confidence in one type`,ok:c=>!!c.lock},
  {k:'famous',name:'Famous matches',feat:'Public figures who share your tendencies, plotted against you',need:'Confirm your type and complete 4 sessions',ok:c=>!!c.lock&&c.n>=4},
@@ -98,8 +98,9 @@ function nav(){return ''} function topbar(){return ''}
 // ---------- router ----------
 function render(){const raw=location.hash.slice(1),r=raw||(st.sessions.length?'home':'intro'),[k,arg]=r.split('/');
  document.body.className='r-'+k;window.scrollTo(0,0);closeSheet(true);
- if(!st.sessions.length&&!['intro','quiz','research','settings'].includes(k)&&!(k==='done'))return intro();
- ({intro,home,themes,profile,journal,session,research:researchView,settings,quiz,done,vault}[k]||home)(arg)}
+ const pub=['intro','quiz','research','settings','compare','rate'];
+ if(!st.sessions.length&&!pub.includes(k)&&k!=='done')return intro();
+ ({intro,home,themes,profile,journal,session,research:researchView,settings,quiz,done,vault,compare,rate,tools}[k]||home)(arg)}
 // ---------- intro ----------
 function intro(){app.innerHTML=`<section class="intro"><header class="ibar"><span class="wordmark">Meridian</span><button class="ghost" onclick="go('research')">The science</button></header>
  <div class="ihero"><div class="igem">${gemSVG('prism',{unlocked:'all',size:300,cls:'float'})}</div>
